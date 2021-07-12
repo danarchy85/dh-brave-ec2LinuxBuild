@@ -9,11 +9,11 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-west-1"
+  region = "${var.aws_region}"
 }
 
 resource "aws_security_group" "allow_ssh" {
-  name = "dh-brave-sg-ssh-ingress"
+  name = "${var.project_name}-sg-ssh-ingress"
   description = "Allow SSH ingress"
 
   ingress {
@@ -33,7 +33,8 @@ resource "aws_security_group" "allow_ssh" {
   }
 
   tags = {
-    Name = "dh-brave-sg-ssh-ingress"
+    Project = var.project_name
+    Name = "${var.project_name}-sg-ssh-ingress"
   }
 }
 
@@ -42,21 +43,44 @@ data "aws_ami" "ubuntu" {
 
   filter {
     name = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-20210430"]
+    values = [var.aws_ami]
   }
 
-  owners = ["099720109477"]
+  owners = [var.aws_ami_owner]
+}
+
+data "template_file" "npmrc" {
+  template = "${file("./templates/npmrc.tpl")}"
+
+  vars = {
+    brave_stats_updater_url = var.brave_stats_updater_url
+    brave_sync_endpoint = var.brave_sync_endpoint
+    brave_variations_server_url = var.brave_variations_server_url
+    uphold_client_id = var.uphold_client_id
+    uphold_client_secret = var.uphold_client_secret
+  }
 }
 
 resource "aws_instance" "linux-build" {
   ami = data.aws_ami.ubuntu.id
-  instance_type = "t2.micro"
+  instance_type = var.instance_size
 
-  key_name = "dh-brave-kp-LinuxBuild"
-  security_groups = ["dh-brave-sg-ssh-ingress"]
+  key_name = "${var.project_name}-kp-LinuxBuild"
+  security_groups = [aws_security_group.allow_ssh.name]
+
+  root_block_device {
+    volume_size = var.root_volume_size
+  }
+
+  connection {
+    type = "ssh"
+    host = self.public_ip
+    user = "ubuntu"
+    private_key = file("/home/dan/.ssh/${var.project_name}-kp-LinuxBuild.pem")
+  }
 
   provisioner "file" {
-    source = "./scripts/npmrc"
+    content = data.template_file.npmrc.rendered
     destination = "/home/ubuntu/.npmrc"
   }
 
@@ -67,20 +91,13 @@ resource "aws_instance" "linux-build" {
 
   provisioner "remote-exec" {
     inline = [
-      "chown ubuntu:ubuntu /home/ubuntu/user_data.sh",
       "chmod +x /home/ubuntu/user_data.sh",
       "/home/ubuntu/user_data.sh >> /tmp/user_data.log"
     ]
   }
 
-  connection {
-    type = "ssh"
-    host = self.public_ip
-    user = "ubuntu"
-    private_key = file("/home/dan/.ssh/dh-brave-kp-LinuxBuild.pem")
-  }
-
   tags = {
-    Name = "dh-brave-ec2-LinuxBuild"
+    Project = var.project_name
+    Name = "${var.project_name}-ec2-LinuxBuild"
   }
 }
