@@ -20,6 +20,8 @@ brave-browser_1.28.71_amd64.deb
 
 ### terraform.tfvars
 
-Assign AWS instance_size and root_volume_size. Default values are t2.micro and 8GiB volume, intended for free tier, and will fail the actual build. Recommended settings a c5.9xlarge with at least 100GiB for the root_volume_size.
+Assigns AWS instance_size and root_volume_size and defines the ~/.npmrc variables.
+
+Default AWS values are t2.micro and 8GiB volume, intended for free tier, which will fail the actual build by going out of memory. Recommended settings are c5.9xlarge with at least 100GiB for the root_volume_size.
 
 The build for brave-browser depends on some additional variables being set in an ~/.npmrc file, so those can be set here as well. Default values are placeholders to allow a build to run.
