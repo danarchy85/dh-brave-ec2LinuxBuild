@@ -5,19 +5,12 @@ terraform {
       source = "hashicorp/aws"
       version = "3.49.0"
     }
-
-    github = {
-      source  = "integrations/github"
-      version = "~> 4.0"
-    }
   }
 }
 
 provider "aws" {
   region = "us-west-1"
 }
-
-provider "github" {}
 
 resource "aws_security_group" "allow_ssh" {
   name = "dh-brave-sg-ssh-ingress"
